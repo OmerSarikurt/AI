@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browser mit KI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg0: #050b12;
+      --bg1: #0a1320;
+      --card: rgba(11, 19, 30, 0.88);
+      --card-border: rgba(142, 183, 214, 0.18);
+      --text: #edf4fb;
+      --muted: #96a8ba;
+      --accent: #7fd6ff;
+      --accent-strong: #c7efff;
+      --danger: #ff9b9b;
+      --input: rgba(6, 12, 20, 0.92);
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      font-family: "Segoe UI", "Aptos", "Inter", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(51, 123, 164, 0.28), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(26, 78, 117, 0.24), transparent 30%),
+        radial-gradient(circle at 50% 0%, rgba(120, 213, 255, 0.08), transparent 26%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      isolation: isolate;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: -20%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    body::before {
+      background:
+        radial-gradient(circle at 18% 20%, rgba(127, 214, 255, 0.28), transparent 22%),
+        radial-gradient(circle at 84% 16%, rgba(101, 135, 255, 0.18), transparent 20%),
+        radial-gradient(circle at 76% 80%, rgba(68, 204, 182, 0.12), transparent 24%);
+      filter: blur(18px);
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+
+    body::after {
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(circle at center, #000 40%, transparent 100%);
+      opacity: 0.16;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      position: relative;
+      background: linear-gradient(180deg, rgba(18, 28, 40, 0.72), rgba(10, 16, 26, 0.54));
+      border: 1px solid rgba(190, 228, 255, 0.18);
+      border-radius: calc(var(--radius) + 12px);
+      box-shadow:
+        0 28px 90px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      overflow: hidden;
+    }
+
+    .app::before,
+    .app::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .app::before {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 18%, transparent 78%, rgba(127, 214, 255, 0.12));
+      mix-blend-mode: screen;
+      opacity: 0.8;
+    }
+
+    .app::after {
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 22%),
+        radial-gradient(circle at 92% 10%, rgba(127, 214, 255, 0.16), transparent 18%);
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 24px 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(18, 32, 47, 0.88), rgba(10, 18, 28, 0.62));
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2vw, 2rem);
+      letter-spacing: 0.01em;
+      text-shadow: 0 0 24px rgba(127, 214, 255, 0.12);
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 62ch;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      padding: 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      border: 1px solid rgba(190, 228, 255, 0.18);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(13, 23, 35, 0.76), rgba(8, 14, 22, 0.56));
+      color: var(--text);
+      padding: 16px 18px;
+      font: inherit;
+      line-height: 1.55;
+      outline: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 10px 30px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(14px) saturate(160%);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    textarea::placeholder {
+      color: rgba(150, 168, 186, 0.72);
+    }
+
+    textarea:focus {
+      border-color: rgba(127, 214, 255, 0.5);
+      box-shadow:
+        0 0 0 3px rgba(127, 214, 255, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 14px 36px rgba(0, 0, 0, 0.26);
+      transform: translateY(-1px);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(191, 233, 255, 0.24);
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(165, 232, 255, 0.34), rgba(84, 176, 219, 0.22));
+      color: var(--accent-strong);
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        0 12px 28px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
+    }
+
+    button:hover {
+      filter: brightness(1.06);
+      transform: translateY(-2px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 16px 34px rgba(0, 0, 0, 0.34);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: progress;
+      transform: none;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .hint code {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--accent-strong);
+      font: inherit;
+    }
+
+    pre {
+      margin: 0;
+      min-height: 220px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(7, 13, 20, 0.66), rgba(6, 10, 16, 0.48));
+      border: 1px solid rgba(190, 228, 255, 0.12);
+      color: var(--accent-strong);
+      line-height: 1.6;
+      overflow: auto;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 12px 30px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    .credit {
+      position: fixed;
+      right: 16px;
+      bottom: 14px;
+      z-index: 3;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(10, 16, 24, 0.52);
+      color: rgba(237, 244, 251, 0.82);
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      header {
+        padding: 18px 16px 14px;
+      }
+
+      .credit {
+        right: 10px;
+        bottom: 10px;
+        font-size: 0.78rem;
+      }
+    }
+
+    @keyframes drift {
+      from {
+        transform: translate3d(-1.5%, -1%, 0) scale(1);
+      }
+      to {
+        transform: translate3d(1.5%, 1%, 0) scale(1.04);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Browser mit KI</h1>
+    </header>
+
+    <section class="content">
+      <div>
+        <label for="msg">Deine Eingabe</label>
+        <textarea id="msg" placeholder="Frag die KI etwas ..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button id="sendBtn" type="button" onclick="send()">Senden</button>
+        <span class="hint">Tipp: <code>Strg + Enter</code> sendet die Nachricht ebenfalls.</span>
+      </div>
+
+      <pre id="out">Bereit.</pre>
+    </section>
+  </main>
+
+  <div class="credit">Made by Ömer</div>
+
+  <script>
+    const API_BASE = window.location.origin.startsWith("http") ? "" : "http://localhost:5000";
+    const MODEL = "llama3.2:latest";
+
+    const input = document.getElementById("msg");
+    const output = document.getElementById("out");
+    const button = document.getElementById("sendBtn");
+
+    async function send() {
+      const text = input.value.trim();
+
+      if (!text) {
+        output.textContent = "Bitte zuerst eine Nachricht eingeben.";
+        return;
+      }
+
+      output.classList.remove("error");
+      output.textContent = "";
+      button.disabled = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt: text, model: MODEL })
+        });
+
+        if (!response.ok) {
+          output.classList.add("error");
+          output.textContent = await response.text();
+          return;
+        }
+
+        if (!response.body) {
+          output.textContent = await response.text();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          result += decoder.decode(value, { stream: true });
+          output.textContent = result;
+          output.scrollTop = output.scrollHeight;
+        }
+      } catch (error) {
+        output.classList.add("error");
+        output.textContent = `Fehler: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        send();
+      }
+    });
+  </script>
+</body>
+</html>
